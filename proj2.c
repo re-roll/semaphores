@@ -22,19 +22,19 @@ void handleErrs(int ERR, bool ifEXIT, int errNum, char *strErr, ...)
     vfprintf(stderr, strErr, args);
 
     va_end(args);
-	
-	if (errNum != 0)
-            fprintf(stderr, "%s\n", strerror(errNum));
-	
-	if (ifEXIT == true)
-	    programExit(ERR);
+    
+    if (errNum != 0)
+        fprintf(stderr, "%s\n", strerror(errNum));
+    
+    if (ifEXIT == true)
+        programExit(ERR);
 }
 
 int convToI(char *str)
 {
-	int val;
-	val = atoi(str);
-	return val;
+    int val;
+    val = atoi(str);
+    return val;
 }
 
 argsDef handleArgs(int argc, char *argv[])
@@ -54,31 +54,31 @@ argsDef handleArgs(int argc, char *argv[])
     
     if (args.NO <= 0){
         handleErrs(ERR_FORM, ERR_EXIT, errno, "ERROR Number of 'O' must be greater than 0");
-	}
-	if (args.NH <= 0){
+    }
+    if (args.NH <= 0){
         handleErrs(ERR_FORM, ERR_EXIT, errno, "ERROR Number of 'H' must be greater than 0");
-	}
-	if ((args.TI < 0) || (args.TI > 1000)){
+    }
+    if ((args.TI < 0) || (args.TI > 1000)){
         handleErrs(ERR_FORM, ERR_EXIT, errno, "ERROR Timeout for going to queue must be greater than 0 and lesser than 1000");
-	}
-	if ((args.TB < 0) || (args.TB > 1000)){
+    }
+    if ((args.TB < 0) || (args.TB > 1000)){
         handleErrs(ERR_FORM, ERR_EXIT, errno, "ERROR Timeout for creating molecula must be greater than 0 and lesser than 1000");
-	}
+    }
 
     return args;
 }
 
 int main(int argc, char *argv[])
 {
-	errno = 0;
+    errno = 0;
 
-	args = handleArgs(argc, argv);
+    args = handleArgs(argc, argv);
 
-	pf = fopen("proj2.out", "w");
+    pf = fopen("proj2.out", "w");
 
-	if (pf == NULL){
-		handleErrs(ERR_FORM, ERR_EXIT, errno, "ERROR opening file");
-	}
+    if (pf == NULL){
+        handleErrs(ERR_FORM, ERR_EXIT, errno, "ERROR opening file");
+    }
 
-	programExit(ERR_NONE);
+    programExit(ERR_NONE);
 }
