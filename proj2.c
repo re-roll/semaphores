@@ -11,12 +11,12 @@ FILE *pf = NULL;
 
 int programExit(int errType)
 {
-	exit(errType);
+    exit(errType);
 }
 
 void handleErrs(int ERR, bool ifEXIT, int errNum, char *strErr, ...)
 {
-	va_list args;
+    va_list args;
     va_start(args, strErr);
 
     vfprintf(stderr, strErr, args);
@@ -24,10 +24,10 @@ void handleErrs(int ERR, bool ifEXIT, int errNum, char *strErr, ...)
     va_end(args);
 	
 	if (errNum != 0)
-        fprintf(stderr, "%s\n", strerror(errNum));
+            fprintf(stderr, "%s\n", strerror(errNum));
 	
 	if (ifEXIT == true)
-		programExit(ERR);
+	    programExit(ERR);
 }
 
 int convToI(char *str)
@@ -39,7 +39,7 @@ int convToI(char *str)
 
 argsDef handleArgs(int argc, char *argv[])
 {
-	errno = 0;
+    errno = 0;
 
     if (argc < 5) {
         handleErrs(ERR_FORM, ERR_EXIT, errno, "ERROR missing arguments");
