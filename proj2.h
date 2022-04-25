@@ -13,15 +13,20 @@
 #define ERR_FORM 1 // Invalid format
 #define ERR_MEMO 2 // Semaphore or memory error
 
-#define ERR_NOEX 0 // Handle without exit
 #define ERR_EXIT 1 // Handle and exit
 
 typedef struct argsDef {
     int NO, NH, TI, TB;
 } argsDef;
 
+// Calling functions here so we will have good logical structure in proj2.c
+
 argsDef handleArgs(int argc, char *argv[]);
 
 void handleErrs(int ERR, bool ifEXIT, int errNum, char *strErr, ...);
+
+int programExit(int errType);
+
+int convToI(char *str);
 
 #endif
