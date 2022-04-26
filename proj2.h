@@ -19,8 +19,8 @@ typedef struct argsDef {
     int NO, NH, TI, TB;
 } argsDef;
 
-typedef struct {
-	int action, creating, finished;
+typedef struct sh_o{
+    int action, creating, finished;
 }sh_o;
 
 argsDef argsGet(int argc, char *argv[]);
