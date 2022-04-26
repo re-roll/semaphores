@@ -3,30 +3,31 @@
 
 #include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
-#include <time.h>
-#include <stdarg.h>
-#include <errno.h>
 #include <stdbool.h>
+#include <unistd.h>
+#include <time.h>
+#include <signal.h>
+#include <semaphore.h>
+#include <sys/wait.h>
+#include <sys/shm.h>
+#include <sys/mman.h>
 
-#define ERR_NONE 0 // No errors
-#define ERR_FORM 1 // Invalid format
-#define ERR_MEMO 2 // Semaphore or memory error
-
-#define ERR_EXIT 1 // Handle and exit
+#define ERR_NONE 0 
+#define ERR_ONE  1 
 
 typedef struct argsDef {
     int NO, NH, TI, TB;
 } argsDef;
 
-// Calling functions here so we will have good logical structure in proj2.c
+typedef struct {
+	int action, creating, finished;
+}sh_o;
 
-argsDef handleArgs(int argc, char *argv[]);
-
-void handleErrs(int ERR, bool ifEXIT, int errNum, char *strErr, ...);
-
+argsDef argsGet(int argc, char *argv[]);
 int programExit(int errType);
-
 int convToI(char *str);
+void hlavniProces();
+void kyslikProces();
+void vodikProces();
 
 #endif
