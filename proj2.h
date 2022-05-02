@@ -38,8 +38,10 @@ void semInit();
 int convToI(char *str);
 void ffprintf(FILE *fp1, char const *fmt, ...);
 int programExit(int errType);
-void mainP();
-void oxygenP();
-void hydrogenP();
+void mainP(argsDef args);
+void oxygenP(int i, argsDef args);
+void hydrogenP(int i, argsDef args);
+void createMol(char *HO, int i);
+void mySleep(int msec);
 
 #endif
