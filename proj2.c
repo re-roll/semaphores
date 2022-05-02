@@ -5,14 +5,18 @@
 FILE *pf = NULL;   //--------File name---------//
 
 sem_t *mutex,      //--Main mutable semaphore--//
-      *barrier,    //-Barrier for new moleculs-//
+      //*mutex2,   //-Mutable semaphore (help)-//
+      //*barrier,  //-Barrier for new moleculs-//
+      //*barrier2, //-Barrier for mlcls (help)-//
+      *writeStr,   //----Wait until writing----//
       *oxyQueue,   //--Oxygen waits in queue---//
       *hydroQueue; //-Hydrogen waits in queue--//
 
 int *oxygen,       //---Counter for oxygens----//
     *hydrogen;     //--Counter for hydrogens---//
 
-int *action;       //----Counter for lines-----//
+int *action,       //----Counter for lines-----//
+    *bondcnt;
 
 int main(int argc, char *argv[])
 {
@@ -24,63 +28,215 @@ int main(int argc, char *argv[])
         exit(ERR_FORMAT);
     }
 
-    // Open all semaphores and memory
-    semInit();
+    semInit(); // Open all semaphores and memory
 
-    // Call main process
-    mainP(args);
+    mainP(args); // Call main process
 
-    // Waiting (inactive)
-    while(wait(NULL) > 0);
+    while(wait(NULL) > 0); // Waiting (inactive)
 
     return 0;
 }
 
 void mainP(argsDef args)
 {
-    for (int i = 0; i < args.NO; i++){ // From zero to number of oxygens
-        pid_t pid = fork();            // Call fork
+    for (int i = 1; i <= args.NO; i++){ // From zero to number of oxygens
+        pid_t pid = fork();             // Call fork
         if (pid == 0){
-            oxygenP();                 // Call process "oxygen"
+            oxygenP(i, args);                 // Call process "oxygen"
             exit(0);
         }
         else if (pid == -1){
             fprintf(stderr, "ERROR calling fork()\n");
-            exit(ERR_MEMORY);
+            programExit(ERR_MEMORY);
         }
     }
 
-    for (int i = 0; i < args.NH; i++){ // From zero to number of hydrogens
-        pid_t pid = fork();            // Call fork
+    for (int i = 1; i <= args.NH; i++){ // From zero to number of hydrogens
+        pid_t pid = fork();             // Call fork
         if (pid == 0){
-            hydrogenP();               // Call process "hydrogen"
+            hydrogenP(i, args);               // Call process "hydrogen"
             exit(0);
         }
         else if (pid == -1){
             fprintf(stderr, "ERROR calling fork()\n");
-            exit(ERR_MEMORY);
+            programExit(ERR_MEMORY);
         }
     }
 
-    exit(ERR_NO); // Call process to destroy semaphores, free memory and exit program
+    programExit(ERR_NO); // Call process to destroy semaphores, free memory and exit program
 }
 
-void oxygenP()
+void oxygenP(int i, argsDef args)
 {
-    (*oxygen)++; // Number of current atom
+    //int count = 0;
+
+    srand(time(NULL) * getpid());
+    (*oxygen)++;
 
     sem_wait(mutex);
-    ffprintf(pf, "%d: O: %d: started\n", *action, *oxygen);
-    sem_post(barrier);
-}
 
-void hydrogenP()
-{
-    (*hydrogen)++; // Number of current atom
+    sem_wait(writeStr);
+    ffprintf(pf, "%d: O %d: started\n", *action, i);
+    sem_post(writeStr);
+
+    if (*hydrogen >= 2){
+        (*bondcnt)++;
+        
+        sem_post(hydroQueue);
+        sem_post(hydroQueue);
+
+        (*hydrogen) -= 2;
+
+        sem_post(oxyQueue);
+
+        (*oxygen)--;
+    }
+    else{
+        sem_post(mutex);
+    }
+
+    sem_wait(oxyQueue);
+
+    mySleep(args.TI);
+
+    sem_wait(writeStr);
+    ffprintf(pf, "%d: O %d: going to queue\n", *action, i);
+    sem_post(writeStr);
+    
+    createMol("O", i);
+
+    mySleep(args.TB);
+
+    /*sem_wait(mutex2);
+    count++;
+    if (count == 3){
+        sem_wait(barrier2);
+        sem_post(barrier);
+    }
+    sem_post(mutex2);
+
+    sem_wait(barrier);
+    sem_post(barrier);
+
+    sem_wait(writeStr);
+    ffprintf(pf, "%d: O %d: molecule %d created\n", *action, i, count);
+    sem_post(writeStr);
+    
+    sem_wait(mutex2);
+    count--;
+    if (count == 0){
+        sem_wait(barrier);
+        sem_post(barrier2);
+    }
+    sem_post(mutex2);
+
+    sem_wait(barrier2);
+    sem_post(barrier2);*/
+
+    sem_wait(writeStr);
+    ffprintf(pf, "%d: O %d: molecule %d created\n", *action, i, *bondcnt);
+    sem_post(writeStr);
 
     sem_post(mutex);
-    ffprintf(pf, "%d: H: %d: started\n", *action, *hydrogen);
+
+    if ((*hydrogen == 1) && (i == args.NO)){
+        sem_wait(writeStr);
+        ffprintf(pf, "%d: O %d: not enough H\n", *action, i);
+        sem_post(writeStr);
+    }
+
+    
+}
+
+void hydrogenP(int i, argsDef args)
+{
+    //int count = 0;
+
+    srand(time(NULL) * getpid());
+    (*hydrogen)++;
+
+    sem_wait(mutex);
+
+    sem_wait(writeStr);
+    ffprintf(pf, "%d: H %d: started\n", *action, i);
+    sem_post(writeStr);
+
+    if ((*hydrogen >= 2) && (*oxygen >= 1)){
+        (*bondcnt)++;
+        sem_post(hydroQueue);
+        sem_post(hydroQueue);
+    
+        (*hydrogen) -= 2;
+
+        sem_post(oxyQueue);
+
+        (*oxygen)--;
+    }
+    else{
+        sem_post(mutex);
+    }
+
+    sem_wait(hydroQueue);
+
+    mySleep(args.TI);
+
+    sem_wait(writeStr);
+    ffprintf(pf, "%d: H %d: going to queue\n", *action, i);
+    sem_post(writeStr);
+
+    createMol("H", i);
+
+    mySleep(args.TB);
+
+    /*sem_wait(mutex2);
+    count++;
+    if (count == 3){
+        sem_wait(barrier2);
+        sem_post(barrier);
+    }
+    sem_post(mutex2);
+
     sem_wait(barrier);
+    sem_post(barrier);
+
+    sem_wait(writeStr);
+    ffprintf(pf, "%d: H %d: molecule %d created\n", *action, i, count);
+    sem_post(writeStr);
+    
+    sem_wait(mutex2);
+    count--;
+    if (count == 0){
+        sem_wait(barrier);
+        sem_post(barrier2);
+    }
+    sem_post(mutex2);
+
+    sem_wait(barrier2);
+    sem_post(barrier2);*/
+
+    sem_wait(writeStr);
+    ffprintf(pf, "%d: H %d: molecule %d created\n", *action, i, *bondcnt);
+    sem_post(writeStr);
+
+    sem_post(mutex);
+
+    if (((*hydrogen == 1) || (*oxygen == 0)) && (i == args.NO)){
+        sem_wait(writeStr);
+        ffprintf(pf, "%d: H %d: not enough O or H\n", *action, i);
+        sem_post(writeStr);
+    }
+}
+
+void createMol(char *HO, int i)
+{
+    sem_wait(writeStr);
+    ffprintf(pf, "%d: %s %d: creating molecule %d\n", *action, HO, i, *bondcnt);
+    sem_post(writeStr);
+}
+
+void mySleep(int msec)
+{
+    usleep(1000 * (rand() % (msec + 1)));
 }
 
 void semInit()
@@ -89,7 +245,13 @@ void semInit()
 
     if ((mutex = mmap(NULL, sizeof(sem_t), PROT_READ | PROT_WRITE, MAP_ANONYMOUS | MAP_SHARED, -1, 0)) == MAP_FAILED)
         err = ERR_MEMORY;
-    if ((barrier = mmap(NULL, sizeof(sem_t), PROT_READ | PROT_WRITE, MAP_ANONYMOUS | MAP_SHARED, -1, 0)) == MAP_FAILED)
+    //if ((mutex2 = mmap(NULL, sizeof(sem_t), PROT_READ | PROT_WRITE, MAP_ANONYMOUS | MAP_SHARED, -1, 0)) == MAP_FAILED)
+    //   err = ERR_MEMORY;
+    //if ((barrier = mmap(NULL, sizeof(sem_t), PROT_READ | PROT_WRITE, MAP_ANONYMOUS | MAP_SHARED, -1, 0)) == MAP_FAILED)
+    //   err = ERR_MEMORY;
+    //if ((barrier2 = mmap(NULL, sizeof(sem_t), PROT_READ | PROT_WRITE, MAP_ANONYMOUS | MAP_SHARED, -1, 0)) == MAP_FAILED)
+    //   err = ERR_MEMORY;
+    if ((writeStr = mmap(NULL, sizeof(sem_t), PROT_READ | PROT_WRITE, MAP_ANONYMOUS | MAP_SHARED, -1, 0)) == MAP_FAILED)
         err = ERR_MEMORY;
     if ((oxyQueue = mmap(NULL, sizeof(sem_t), PROT_READ | PROT_WRITE, MAP_ANONYMOUS | MAP_SHARED, -1, 0)) == MAP_FAILED)
         err = ERR_MEMORY;
@@ -98,19 +260,24 @@ void semInit()
         
     if (err == ERR_MEMORY)
         exit(ERR_MEMORY);
-    else{
-        sem_init(mutex, 1, 1);
-        sem_init(barrier, 1, 1);
-        sem_init(oxyQueue, 1, 1);
-        sem_init(hydroQueue, 1, 1);
+    
+    sem_init(mutex, 1, 1);
+    //sem_init(mutex2, 1, 1);
+    //sem_init(barrier, 1, 0);
+    //sem_init(barrier2, 1, 1);
+    sem_init(writeStr, 1, 1);
+    sem_init(oxyQueue, 1, 0);
+    sem_init(hydroQueue, 1, 0);
 
-        oxygen = mmap(NULL, sizeof(int), PROT_READ | PROT_WRITE, MAP_ANONYMOUS | MAP_SHARED, 0, 0);
-        (*oxygen) = 0;
-        hydrogen = mmap(NULL, sizeof(int), PROT_READ | PROT_WRITE, MAP_ANONYMOUS | MAP_SHARED, 0, 0);
-        (*hydrogen) = 0;
-        action = mmap(NULL, sizeof(int), PROT_READ | PROT_WRITE, MAP_ANONYMOUS | MAP_SHARED, 0, 0);
-        (*action) = 1;
-    }
+    oxygen = mmap(NULL, sizeof(int), PROT_READ | PROT_WRITE, MAP_ANONYMOUS | MAP_SHARED, 0, 0);
+    (*oxygen) = 0;
+    hydrogen = mmap(NULL, sizeof(int), PROT_READ | PROT_WRITE, MAP_ANONYMOUS | MAP_SHARED, 0, 0);
+    (*hydrogen) = 0;
+    action = mmap(NULL, sizeof(int), PROT_READ | PROT_WRITE, MAP_ANONYMOUS | MAP_SHARED, 0, 0);
+    (*action) = 1;
+    bondcnt = mmap(NULL, sizeof(int), PROT_READ | PROT_WRITE, MAP_ANONYMOUS | MAP_SHARED, 0, 0);
+    (*bondcnt) = 0;
+    
 }
 
 void ffprintf(FILE *pf, char const *fmt, ...)
@@ -133,27 +300,21 @@ void ffprintf(FILE *pf, char const *fmt, ...)
     va_end(ap1);
 }
 
-int convToI(char *str) // Convert arguments from input of calling program to integers
-{
-    int val = atoi(str);
-
-    return val;
-}
-
 argsDef argsGet(int argc, char *argv[])
 {
-    if (argc != 5) { // Checking if we have exactly 4 arguments after filename  
+    // Checking if we have exactly 4 arguments after filename
+    if (argc != 5) {  
         fprintf(stderr, "ERROR missing arguments\n");
         exit(ERR_FORMAT);
     }
 
-    argsDef args;               // Structure initialization
+    argsDef args; // Structure initialization             
 
     // Convertation of strings to integers
-    args.NO = convToI(argv[1]);
-    args.NH = convToI(argv[2]);
-    args.TI = convToI(argv[3]); 
-    args.TB = convToI(argv[4]); 
+    args.NO = atoi(argv[1]);
+    args.NH = atoi(argv[2]);
+    args.TI = atoi(argv[3]); 
+    args.TB = atoi(argv[4]); 
 
     // Range format errors
     if (args.NO <= 0){
@@ -183,7 +344,13 @@ int programExit(int errType)
     // Destroying semaphores and getting possible errors
     if (sem_destroy(mutex) == -1) 
         errType = ERR_MEMORY;
+    /*if (sem_destroy(mutex2) == -1) 
+        errType = ERR_MEMORY;
     if (sem_destroy(barrier) == -1) 
+        errType = ERR_MEMORY;
+    if (sem_destroy(barrier2) == -1) 
+        errType = ERR_MEMORY;*/
+    if (sem_destroy(writeStr) == -1) 
         errType = ERR_MEMORY;
     if (sem_destroy(oxyQueue) == -1) 
         errType = ERR_MEMORY;
@@ -192,14 +359,17 @@ int programExit(int errType)
 
     // Free memory
     munmap(mutex, sizeof(sem_t));
-    munmap(barrier, sizeof(sem_t));
+    //munmap(mutex2, sizeof(sem_t));
+    //munmap(barrier, sizeof(sem_t));
+    //munmap(barrier2, sizeof(sem_t));
+    munmap(writeStr, sizeof(sem_t));
     munmap(oxyQueue, sizeof(sem_t));
     munmap(hydroQueue, sizeof(sem_t));
 
     munmap(oxygen, sizeof(int));
     munmap(hydrogen, sizeof(int));
     munmap(action, sizeof(int));
+    munmap(bondcnt, sizeof(int));
 
-    // Exit program with right type of error
-    exit(errType);
+    exit(errType); // Exit program with right type of error
 }
